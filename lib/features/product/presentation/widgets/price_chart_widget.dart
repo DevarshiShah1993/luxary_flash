@@ -3,13 +3,6 @@ import '../../domain/entities/bid_point.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'price_chart_painter.dart';
 
-/// Stateful wrapper around [PriceChartPainter].
-///
-/// Responsibilities:
-///   • Drives the pulse-dot animation via [AnimationController].
-///   • Wraps painter in [RepaintBoundary] to isolate repaints from the rest
-///     of the page tree — critical for 60 fps with live data.
-///   • Shows a skeleton shimmer while [isParsingHistory] is true.
 class PriceChartWidget extends StatefulWidget {
   const PriceChartWidget({
     super.key,
@@ -55,7 +48,6 @@ class _PriceChartWidgetState extends State<PriceChartWidget>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Section header ─────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Row(
@@ -92,8 +84,6 @@ class _PriceChartWidgetState extends State<PriceChartWidget>
             ],
           ),
         ),
-
-        // ── Chart canvas ───────────────────────────────────────────
         SizedBox(
           height: 200,
           child: widget.isParsingHistory
@@ -120,11 +110,6 @@ class _PriceChartWidgetState extends State<PriceChartWidget>
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Supporting widgets
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Compact spinner shown next to "PRICE HISTORY" label while isolate runs.
 class _ParseSpinner extends StatelessWidget {
   const _ParseSpinner();
 
@@ -153,8 +138,6 @@ class _ParseSpinner extends StatelessWidget {
   }
 }
 
-/// Skeleton placeholder shown in place of the chart while data loads.
-/// Uses a subtle shimmer-style animated opacity.
 class _ChartSkeleton extends StatefulWidget {
   const _ChartSkeleton();
 

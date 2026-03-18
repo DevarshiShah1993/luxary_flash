@@ -4,19 +4,6 @@ import 'package:flutter/services.dart';
 import '../../domain/entities/current_price.dart';
 import '../../../../core/theme/app_theme.dart';
 
-/// The "Hold to Secure" purchase button.
-///
-/// State machine (mirrors [PurchaseFlowState] in the BLoC):
-///
-///   idle
-///     └─(press down)──► holding  [progress ring fills over 2s]
-///         ├─(release early)──► idle  [ring snaps back, easeOut]
-///         └─(2s complete)──► verifying  [morphs to spinner]
-///             ├─(success)──► success  [morphs to checkmark ✓]
-///             └─(failed)──► failed   [morphs to ✕]
-///
-/// All morphs share one [AnimationController] so timing stays perfectly
-/// synchronised with the BLoC state without any manual coordination.
 class HoldToBuyButton extends StatefulWidget {
   const HoldToBuyButton({
     super.key,
@@ -40,31 +27,21 @@ class HoldToBuyButton extends StatefulWidget {
   State<HoldToBuyButton> createState() => _HoldToBuyButtonState();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Import the enum without bloc dependency (passed in from the page)
-// ─────────────────────────────────────────────────────────────────────────────
-// We re-declare a local alias so this widget file is self-contained.
-// The page maps BLoC PurchaseFlowState → this enum.
 enum PurchaseFlowState { idle, holding, verifying, success, failed }
 
 class _HoldToBuyButtonState extends State<HoldToBuyButton>
     with TickerProviderStateMixin {
-  // ── Progress ring controller (0 → 1 over 2 seconds) ──────────────
   late final AnimationController _progressCtrl;
   late final Animation<double> _progressAnim;
 
-  // ── Morph controller: button → spinner → icon (0 → 1) ────────────
   late final AnimationController _morphCtrl;
   late final Animation<double> _morphAnim;
 
-  // ── Spinner rotation ──────────────────────────────────────────────
   late final AnimationController _spinCtrl;
 
-  // ── Success/fail icon scale ───────────────────────────────────────
   late final AnimationController _iconCtrl;
   late final Animation<double> _iconScale;
 
-  // ── Button scale on press ─────────────────────────────────────────
   late final AnimationController _pressCtrl;
   late final Animation<double> _pressScale;
 
@@ -74,7 +51,6 @@ class _HoldToBuyButtonState extends State<HoldToBuyButton>
   void initState() {
     super.initState();
 
-    // Progress ring: fills over 2s
     _progressCtrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -84,7 +60,6 @@ class _HoldToBuyButtonState extends State<HoldToBuyButton>
       curve: Curves.linear,
     );
 
-    // Morph: 300ms
     _morphCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -94,13 +69,11 @@ class _HoldToBuyButtonState extends State<HoldToBuyButton>
       curve: Curves.easeInOut,
     );
 
-    // Spinner: continuous rotation
     _spinCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
 
-    // Icon pop: spring-like overshoot
     _iconCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -110,7 +83,6 @@ class _HoldToBuyButtonState extends State<HoldToBuyButton>
       curve: Curves.elasticOut,
     );
 
-    // Press scale
     _pressCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 100),
@@ -119,7 +91,6 @@ class _HoldToBuyButtonState extends State<HoldToBuyButton>
     )..value = 1.0;
     _pressScale = _pressCtrl;
 
-    // Listen for progress completion
     _progressCtrl.addStatusListener(_onProgressStatus);
   }
 
@@ -142,7 +113,6 @@ class _HoldToBuyButtonState extends State<HoldToBuyButton>
   void _handleFlowChange(PurchaseFlowState next) {
     switch (next) {
       case PurchaseFlowState.idle:
-        // Snap back: reverse progress with easeOut feel
         _progressCtrl.animateBack(
           0,
           duration: const Duration(milliseconds: 400),
@@ -163,20 +133,20 @@ class _HoldToBuyButtonState extends State<HoldToBuyButton>
 
       case PurchaseFlowState.verifying:
         _progressCtrl.stop();
-        _morphCtrl.forward(); // button → spinner
+        _morphCtrl.forward();
         _spinCtrl.repeat();
         break;
 
       case PurchaseFlowState.success:
         HapticFeedback.mediumImpact();
         _spinCtrl.stop();
-        _iconCtrl.forward(); // spinner → checkmark
+        _iconCtrl.forward();
         break;
 
       case PurchaseFlowState.failed:
         HapticFeedback.heavyImpact();
         _spinCtrl.stop();
-        _iconCtrl.forward(); // spinner → ✕
+        _iconCtrl.forward();
         break;
     }
   }
@@ -191,8 +161,6 @@ class _HoldToBuyButtonState extends State<HoldToBuyButton>
     _pressCtrl.dispose();
     super.dispose();
   }
-
-  // ── Gesture handlers ───────────────────────────────────────────────
 
   void _onTapDown(TapDownDetails _) {
     if (widget.purchaseFlow != PurchaseFlowState.idle) return;
@@ -248,10 +216,6 @@ class _HoldToBuyButtonState extends State<HoldToBuyButton>
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Button shell — pure layout + paint, no logic
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _ButtonShell extends StatelessWidget {
   const _ButtonShell({
     required this.flow,
@@ -264,9 +228,9 @@ class _ButtonShell extends StatelessWidget {
 
   final PurchaseFlowState flow;
   final double progress;
-  final double morphValue;     // 0 = button label, 1 = spinner/icon
-  final double spinValue;      // 0→1 rotation progress
-  final double iconScale;      // 0→1 for success/fail icon pop
+  final double morphValue;
+  final double spinValue;
+  final double iconScale;
   final CurrentPrice currentPrice;
 
   static const double _size = 64.0;
@@ -275,23 +239,17 @@ class _ButtonShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // LayoutBuilder gives the real available width so we can lerp
-    // from it to _size — avoids NaN from lerping double.infinity.
     return LayoutBuilder(
       builder: (context, constraints) {
-        final availableWidth = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : 300.0; // safe fallback when unconstrained
+        final availableWidth =
+            constraints.maxWidth.isFinite ? constraints.maxWidth : 300.0;
 
         return SizedBox(
           height: _buttonH,
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // ── Base button body ──────────────────────────────────
               _buildButtonBody(availableWidth),
-
-              // ── Progress ring (drawn on top) ──────────────────────
               if (flow == PurchaseFlowState.holding ||
                   flow == PurchaseFlowState.verifying)
                 _ProgressRing(
@@ -299,8 +257,6 @@ class _ButtonShell extends StatelessWidget {
                   size: _size + 12,
                   strokeWidth: _ringStroke,
                 ),
-
-              // ── Button content (label / spinner / icon) ────────────
               _buildContent(),
             ],
           ),
@@ -310,18 +266,16 @@ class _ButtonShell extends StatelessWidget {
   }
 
   Widget _buildButtonBody(double availableWidth) {
-    // Morphs from wide pill → circle as morphValue goes 0→1
     final borderRadius = BorderRadius.circular(
       lerpDouble(16, _size / 2, morphValue)!,
     );
-    // Lerp from the actual measured width → circle diameter (no infinity)
+
     final width = lerpDouble(availableWidth, _size, morphValue)!;
 
-    // Background colour
     final bgColor = switch (flow) {
       PurchaseFlowState.success => AppTheme.priceUp,
-      PurchaseFlowState.failed  => AppTheme.priceDown,
-      _                         => AppTheme.accent,
+      PurchaseFlowState.failed => AppTheme.priceDown,
+      _ => AppTheme.accent,
     };
 
     return AnimatedContainer(
@@ -344,11 +298,10 @@ class _ButtonShell extends StatelessWidget {
 
   Widget _buildContent() {
     return switch (flow) {
-      PurchaseFlowState.idle || PurchaseFlowState.holding =>
-        _buildIdleLabel(),
+      PurchaseFlowState.idle || PurchaseFlowState.holding => _buildIdleLabel(),
       PurchaseFlowState.verifying => _buildSpinner(),
-      PurchaseFlowState.success   => _buildIcon(Icons.check_rounded, true),
-      PurchaseFlowState.failed    => _buildIcon(Icons.close_rounded, false),
+      PurchaseFlowState.success => _buildIcon(Icons.check_rounded, true),
+      PurchaseFlowState.failed => _buildIcon(Icons.close_rounded, false),
     };
   }
 
@@ -423,10 +376,6 @@ class _ButtonShell extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Progress ring — CustomPainter arc
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _ProgressRing extends StatelessWidget {
   const _ProgressRing({
     required this.progress,
@@ -466,10 +415,9 @@ class _RingPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - strokeWidth) / 2;
-    const startAngle = -3.14159 / 2; // top
+    const startAngle = -3.14159 / 2;
     final sweepAngle = 2 * 3.14159 * progress;
 
-    // Track (background ring)
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       0,
@@ -484,7 +432,6 @@ class _RingPainter extends CustomPainter {
 
     if (progress <= 0) return;
 
-    // Filled arc
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       startAngle,
@@ -509,15 +456,9 @@ class _RingPainter extends CustomPainter {
   bool shouldRepaint(_RingPainter old) => old.progress != progress;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
 double? lerpDouble(num? a, num? b, double t) {
   if (a == null && b == null) return null;
   a ??= 0.0;
   b ??= 0.0;
   return a + (b - a) * t;
 }
-
-

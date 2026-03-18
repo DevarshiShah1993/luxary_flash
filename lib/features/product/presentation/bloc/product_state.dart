@@ -1,21 +1,6 @@
 part of 'product_bloc.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Purchase flow state machine
-// ─────────────────────────────────────────────────────────────────────────────
-//
-//   idle ──(hold start)──► holding
-//   holding ──(release early)──► idle
-//   holding ──(2s complete)──► verifying
-//   verifying ──(success)──► success
-//   verifying ──(failure)──► failed
-//   success / failed ──(reset)──► idle
-//
 enum PurchaseFlowState { idle, holding, verifying, success, failed }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Top-level states
-// ─────────────────────────────────────────────────────────────────────────────
 
 abstract class ProductState extends Equatable {
   const ProductState();
@@ -24,27 +9,20 @@ abstract class ProductState extends Equatable {
   List<Object?> get props => [];
 }
 
-/// Page is bootstrapping — fetching product + spawning isolate.
 class ProductLoading extends ProductState {
   const ProductLoading();
 }
 
-/// Everything ready — this is the only long-lived state once loaded.
-/// The UI rebuilds from this single state; fields update in place.
 class ProductLoaded extends ProductState {
   final ProductDetail product;
   final CurrentPrice currentPrice;
 
-  /// Historical bids parsed by the isolate. Empty list while still parsing.
   final List<BidPoint> historicalBids;
 
-  /// Live price points appended every 800 ms for the right-side of the chart.
   final List<BidPoint> livePricePoints;
 
-  /// Whether the isolate is still running.
   final bool isParsingHistory;
 
-  /// Current stage of the buy-button flow.
   final PurchaseFlowState purchaseFlow;
 
   const ProductLoaded({
@@ -56,7 +34,6 @@ class ProductLoaded extends ProductState {
     this.purchaseFlow = PurchaseFlowState.idle,
   });
 
-  /// Immutable copy with selective field overrides.
   ProductLoaded copyWith({
     ProductDetail? product,
     CurrentPrice? currentPrice,
@@ -86,7 +63,6 @@ class ProductLoaded extends ProductState {
       ];
 }
 
-/// Unrecoverable error during initial load.
 class ProductError extends ProductState {
   final String message;
   const ProductError(this.message);

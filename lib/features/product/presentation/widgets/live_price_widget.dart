@@ -2,16 +2,6 @@ import 'package:flutter/material.dart';
 import '../../domain/entities/current_price.dart';
 import '../../../../core/theme/app_theme.dart';
 
-/// Displays the live price with smooth implicit animations.
-///
-/// Every 800 ms the BLoC emits a new [CurrentPrice]. This widget:
-///   • Smoothly interpolates the numeric value via [TweenAnimationBuilder]
-///   • Fades + slides the price in from above (up) or below (down)
-///     using [AnimatedSwitcher] with a custom [SlideTransition]
-///   • Colour-shifts between gold / teal-green / red based on [PriceDirection]
-///   • Animates the demand multiplier badge independently
-///
-/// Zero [AnimationController]s — all implicit, zero boilerplate.
 class LivePriceWidget extends StatelessWidget {
   const LivePriceWidget({
     super.key,
@@ -25,7 +15,6 @@ class LivePriceWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Live label ─────────────────────────────────────────────
         Row(
           children: [
             _PulseDot(direction: currentPrice.direction),
@@ -41,10 +30,7 @@ class LivePriceWidget extends StatelessWidget {
             ),
           ],
         ),
-
         const SizedBox(height: 8),
-
-        // ── Main price + direction arrow ───────────────────────────
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -53,10 +39,7 @@ class LivePriceWidget extends StatelessWidget {
             _DirectionArrow(direction: currentPrice.direction),
           ],
         ),
-
         const SizedBox(height: 10),
-
-        // ── Bottom row: multiplier badge + inventory ───────────────
         Row(
           children: [
             _MultiplierBadge(multiplier: currentPrice.multiplier),
@@ -69,30 +52,24 @@ class LivePriceWidget extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Animated price number
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _AnimatedPriceText extends StatelessWidget {
   const _AnimatedPriceText({required this.currentPrice});
 
   final CurrentPrice currentPrice;
 
   Color _priceColor(PriceDirection dir) => switch (dir) {
-        PriceDirection.up   => AppTheme.priceUp,
+        PriceDirection.up => AppTheme.priceUp,
         PriceDirection.down => AppTheme.priceDown,
         PriceDirection.flat => AppTheme.accent,
       };
 
   @override
   Widget build(BuildContext context) {
-    // TweenAnimationBuilder smoothly interpolates between old and new price
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(end: currentPrice.price),
       duration: const Duration(milliseconds: 600),
       curve: Curves.easeOutCubic,
       builder: (context, animatedPrice, _) {
-        // Format the interpolated value identically to formattedPrice
         final display = animatedPrice >= 1000
             ? '\$${(animatedPrice / 1000).toStringAsFixed(2)}k'
             : '\$${animatedPrice.toStringAsFixed(2)}';
@@ -100,11 +77,8 @@ class _AnimatedPriceText extends StatelessWidget {
         return AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
           transitionBuilder: (child, animation) {
-            // Slide up for price increase, slide down for decrease
             final isUp = currentPrice.direction == PriceDirection.up;
-            final offset = isUp
-                ? const Offset(0, 0.3)   // enters from below
-                : const Offset(0, -0.3); // enters from above
+            final offset = isUp ? const Offset(0, 0.3) : const Offset(0, -0.3);
 
             return SlideTransition(
               position: Tween<Offset>(
@@ -134,10 +108,6 @@ class _AnimatedPriceText extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Direction arrow
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _DirectionArrow extends StatelessWidget {
   const _DirectionArrow({required this.direction});
 
@@ -157,7 +127,8 @@ class _DirectionArrow extends StatelessWidget {
         key: ValueKey(direction),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: BoxDecoration(
-          color: (isUp ? AppTheme.priceUp : AppTheme.priceDown).withOpacity(0.15),
+          color:
+              (isUp ? AppTheme.priceUp : AppTheme.priceDown).withOpacity(0.15),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Icon(
@@ -170,10 +141,6 @@ class _DirectionArrow extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Demand multiplier badge
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _MultiplierBadge extends StatelessWidget {
   const _MultiplierBadge({required this.multiplier});
 
@@ -181,7 +148,6 @@ class _MultiplierBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Colour intensity scales with multiplier magnitude
     final intensity = ((multiplier - 1.0) / 0.5).clamp(0.0, 1.0);
     final badgeColor = Color.lerp(
       AppTheme.accent,
@@ -224,10 +190,6 @@ class _MultiplierBadge extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Inventory chip
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _InventoryChip extends StatelessWidget {
   const _InventoryChip({required this.remaining});
 
@@ -245,9 +207,7 @@ class _InventoryChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            isLow
-                ? Icons.warning_amber_rounded
-                : Icons.inventory_2_outlined,
+            isLow ? Icons.warning_amber_rounded : Icons.inventory_2_outlined,
             color: color,
             size: 13,
           ),
@@ -266,10 +226,6 @@ class _InventoryChip extends StatelessWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Pulsing live indicator dot
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _PulseDot extends StatefulWidget {
   const _PulseDot({required this.direction});
@@ -294,7 +250,7 @@ class _PulseDotState extends State<_PulseDot>
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
 
-    _scale   = Tween<double>(begin: 0.6, end: 1.0)
+    _scale = Tween<double>(begin: 0.6, end: 1.0)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
     _opacity = Tween<double>(begin: 0.4, end: 1.0)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
